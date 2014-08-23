@@ -29,6 +29,9 @@ CHANGES
 INTERNALS
 ---------
 
+* pbr is now used to manage build and release tooling.
+  (Monty Taylor, Robert Collins)
+
 * The ``get_subunit_stream`` methods now return subunit v2 streams rather
   than v1 streams, preparing the way for storage of native v2 streams in
   the repository. (Robert Collins)
