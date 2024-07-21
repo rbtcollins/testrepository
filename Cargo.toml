@@ -1,5 +1,5 @@
 [workspace]
-members = ["lib/testrepository_repository"]
+members = ["lib/testrepository_repository", "testr-cli"]
 resolver = "2"
 
 [workspace.package]

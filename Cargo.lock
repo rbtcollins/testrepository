@@ -3,5 +3,12 @@
 version = 3
 
 [[package]]
+name = "testr-cli"
+version = "0.1.0"
+dependencies = [
+ "testrepository_repository",
+]
+
+[[package]]
 name = "testrepository_repository"
 version = "0.1.0"
