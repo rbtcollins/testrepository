@@ -14,3 +14,4 @@ ChangeLog
 doc/build/
 testrepository/_version.py
 /.vscode
+/target

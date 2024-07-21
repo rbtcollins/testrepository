@@ -1,0 +1,14 @@
+[workspace]
+members = ["lib/testrepository_repository"]
+resolver = "2"
+
+[workspace.package]
+authors = []
+description = "A repository of test results"
+edition = "2021"
+license = "Apache-2.0 OR BSD-3-Clause"
+publish = false                              # Until ready
+version = "0.1.0"
+
+[workspace.dependencies]
+testrepository_repository = { path = "lib/testrepository_repository" }
