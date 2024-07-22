@@ -11,3 +11,8 @@ version.workspace = true
 [dependencies]
 eyre.workspace = true
 thiserror.workspace = true
+tokio.workspace = true
+url.workspace = true
+
+[dev-dependencies]
+tokio-test.workspace = true

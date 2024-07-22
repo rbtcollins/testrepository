@@ -1,15 +1,4 @@
-//! Storage of test results.
-//!
-//! A Repository provides storage and indexing of results.
-//!
-//! The Repository trait defines the contract for Repository implementations.
-//!
-//! The file module is compatible with the Python testrepository implementation.
-//! The memory module is a simple in-memory implementation useful for testing or
-//! in-process storage for small workloads.
-//!
-//! Repositories are identified by their URL, and new ones are made by calling
-//! the initialize function in the appropriate repository module.
+//! Abstraction over different implementations
 
 // Copyright (c) 2009,2024 Testrepository Contributors
 //
@@ -24,6 +13,32 @@
 // license you chose for the specific language governing permissions and
 // limitations under that license.
 
-pub mod error;
-pub mod implementations;
-pub mod repository;
+use url::Url;
+
+use crate::error::Result;
+
+/// All the known Repository implementations.
+#[derive(Debug)]
+#[non_exhaustive]
+pub enum Repository {}
+
+impl Repository {
+    pub async fn open(location: &Url) -> Result<Self> {
+        match location.scheme() {
+            _ => Err(eyre::eyre!("Unknown scheme {}", location))?,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use tokio_test::assert_err;
+    use url::Url;
+
+    use crate::implementations::Repository;
+
+    #[tokio::test]
+    async fn unknown_scheme() {
+        assert_err!(Repository::open(&Url::parse("foo:").unwrap()).await);
+    }
+}
