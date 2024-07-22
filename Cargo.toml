@@ -30,4 +30,6 @@ tokio = { version = "1.38.1", default-features = false, features = [
     "time",
 ] }
 tokio-test = "0.4.4"
+tracing = "0.1.27"
+tracing-test = "0.2.5"
 url = "2.5.2"

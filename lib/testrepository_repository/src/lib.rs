@@ -26,4 +26,5 @@
 
 pub mod error;
 pub mod implementations;
+pub mod memory;
 pub mod repository;
