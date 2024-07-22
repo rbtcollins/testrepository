@@ -1,15 +1,4 @@
-//! Storage of test results.
-//!
-//! A Repository provides storage and indexing of results.
-//!
-//! The Repository trait defines the contract for Repository implementations.
-//!
-//! The file module is compatible with the Python testrepository implementation.
-//! The memory module is a simple in-memory implementation useful for testing or
-//! in-process storage for small workloads.
-//!
-//! Repositories are identified by their URL, and new ones are made by calling
-//! the initialize function in the appropriate repository module.
+//! Public error types for the repository module.
 
 // Copyright (c) 2009,2024 Testrepository Contributors
 //
@@ -24,4 +13,14 @@
 // license you chose for the specific language governing permissions and
 // limitations under that license.
 
-pub mod error;
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+#[non_exhaustive]
+pub enum Error {
+    /// Errors that shouldn't need matching on
+    #[error("{0}")]
+    Eyre(#[from] eyre::Report),
+}
+
+pub type Result<T> = std::result::Result<T, Error>;

@@ -11,4 +11,6 @@ publish = false                              # Until ready
 version = "0.1.0"
 
 [workspace.dependencies]
+eyre = "0.6.5"
 testrepository_repository = { path = "lib/testrepository_repository" }
+thiserror = "1.0.42"

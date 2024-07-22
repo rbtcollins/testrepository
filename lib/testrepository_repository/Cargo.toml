@@ -9,3 +9,5 @@ publish.workspace = true
 version.workspace = true
 
 [dependencies]
+eyre.workspace = true
+thiserror.workspace = true
