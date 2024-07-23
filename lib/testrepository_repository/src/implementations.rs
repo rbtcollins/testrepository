@@ -13,10 +13,13 @@
 // license you chose for the specific language governing permissions and
 // limitations under that license.
 
+use std::path::Path;
+
 use url::Url;
 
 use crate::{
-    error::Result,
+    error::{Eyrify, Result},
+    file::File,
     memory::{Memory, MemoryStore},
 };
 
@@ -40,6 +43,8 @@ impl OpenOptions {
 pub enum Repository {
     /// In-memory repository
     Memory(Memory),
+    /// Python testrepository compatible file repository
+    File(File),
 }
 
 impl Repository {
@@ -51,6 +56,11 @@ impl Repository {
     /// Open a repository at the given location with given options
     pub async fn open_with(location: &Url, options: OpenOptions) -> Result<Self> {
         match location.scheme() {
+            "file" => {
+                let path = Path::new(&location.path()[1..]);
+                let path = path.canonicalize().eyre()?;
+                Ok(Self::File(File::new(&path).await?))
+            }
             "memory" => {
                 let relpath = location.host_str().unwrap_or_default();
                 Ok(Self::Memory(Memory::new(relpath, options.memory_store)?))
@@ -67,6 +77,7 @@ mod tests {
     use url::Url;
 
     use crate::{
+        file::File,
         implementations::{OpenOptions, Repository},
         memory::MemoryStore,
     };
@@ -91,5 +102,40 @@ mod tests {
     async fn memory_uninitialized() {
         let r = Repository::open(&Url::parse("memory://a").unwrap()).await;
         assert_err!(r);
+    }
+
+    #[tokio::test]
+    #[traced_test]
+    async fn file() {
+        let dir = tempfile::tempdir().unwrap();
+        let i = File::initialize_v2(dir.path()).await.unwrap();
+        let url = Url::from_file_path(dir.path()).unwrap();
+        let r = assert_ok!(Repository::open(&url).await);
+        let Repository::File(r) = r else {
+            panic!("unexpected repository type {:?}", r);
+        };
+        assert_eq!(i, r);
+    }
+
+    #[tokio::test]
+    #[traced_test]
+    async fn file_python_compat() {
+        let dir = tempfile::tempdir().unwrap();
+        #[allow(deprecated)]
+        let i = File::initialize_v1(dir.path()).await.unwrap();
+        let url = Url::from_file_path(dir.path()).unwrap();
+        let r = assert_ok!(Repository::open(&url).await);
+        let Repository::File(r) = r else {
+            panic!("unexpected repository type {:?}", r);
+        };
+        assert_eq!(i, r);
+    }
+
+    #[tokio::test]
+    #[traced_test]
+    async fn file_uninitialized() {
+        let dir = tempfile::tempdir().unwrap();
+        let uri = Url::parse(&format!("file:///{}", dir.path().display())).unwrap();
+        assert_err!(Repository::open(&uri).await);
     }
 }

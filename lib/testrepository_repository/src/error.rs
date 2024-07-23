@@ -24,3 +24,15 @@ pub enum Error {
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
+
+pub trait Eyrify {
+    type Value;
+    fn eyre(self) -> Result<Self::Value>;
+}
+
+impl<T, E: std::error::Error + Send + Sync + 'static> Eyrify for std::result::Result<T, E> {
+    type Value = T;
+    fn eyre(self) -> Result<T> {
+        self.map_err(|e| eyre::Report::from(e).into())
+    }
+}

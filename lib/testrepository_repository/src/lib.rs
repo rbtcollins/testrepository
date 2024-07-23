@@ -25,6 +25,8 @@
 // limitations under that license.
 
 pub mod error;
+pub mod file;
 pub mod implementations;
+pub mod io;
 pub mod memory;
 pub mod repository;
