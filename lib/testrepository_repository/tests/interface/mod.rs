@@ -7,6 +7,7 @@ use testrepository_repository::{
 use url::Url;
 
 mod count;
+mod latest_id;
 
 enum Implementation {
     Memory,

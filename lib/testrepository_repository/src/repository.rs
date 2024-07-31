@@ -22,4 +22,14 @@ use crate::error::Result;
 pub trait Repository {
     /// Get the number of test runs this repository has stored.
     async fn count(&self) -> Result<usize>;
+
+    /// Get the id of the latest test run, if any.
+    async fn latest_id(&self) -> Result<Option<usize>> {
+        let count = self.count().await?;
+        if count == 0 {
+            Ok(None)
+        } else {
+            Ok(Some(count - 1))
+        }
+    }
 }
