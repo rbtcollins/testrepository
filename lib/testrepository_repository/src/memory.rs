@@ -13,22 +13,32 @@
 // license you chose for the specific language governing permissions and
 // limitations under that license.
 
-use std::fmt::{Debug, Display};
+use std::{
+    fmt::{Debug, Display},
+    // Locking data, not IO access - but don't hold the lock across IO operations
+    sync::{Arc, Mutex},
+};
 
+use async_trait::async_trait;
 use tracing::instrument;
 
 use crate::{error::Result, repository::Repository};
 
+#[derive(Default, Debug)]
+struct MemoryState {
+    runs: Vec<()>,
+}
+
 /// Process memory backed store for MemoryRepository.
 #[derive(Default)]
 pub struct MemoryStore {
-    repos: std::collections::HashMap<String, ()>,
+    repos: std::collections::HashMap<String, Arc<Mutex<MemoryState>>>,
 }
 
 impl MemoryStore {
     /// Create a new Memory Repository in the store.
     pub fn initialize(&mut self, name: &str) {
-        self.repos.insert(name.into(), ());
+        self.repos.insert(name.into(), Default::default());
     }
 }
 
@@ -44,7 +54,7 @@ impl Debug for MemoryStore {
 /// reopening, but backed entirely by process memory.
 #[derive(Debug)]
 pub struct Memory {
-    store: MemoryStore,
+    state: Arc<Mutex<MemoryState>>,
     path: String,
 }
 
@@ -53,7 +63,7 @@ impl Display for Memory {
         write!(
             f,
             "(Memory repository at {} in store {:?})",
-            self.path, self.store
+            self.path, self.state
         )
     }
 }
@@ -61,10 +71,10 @@ impl Display for Memory {
 impl Memory {
     /// Create a new Memory repository with the given store.
     #[instrument(ret(Display), err)]
-    pub fn new(path: &str, store: MemoryStore) -> Result<Self> {
+    pub fn new(path: &str, store: &MemoryStore) -> Result<Self> {
         if store.repos.contains_key(path) {
             Ok(Self {
-                store,
+                state: store.repos[path].clone(),
                 path: path.into(),
             })
         } else {
@@ -73,4 +83,9 @@ impl Memory {
     }
 }
 
-impl Repository for Memory {}
+#[async_trait]
+impl Repository for Memory {
+    async fn count(&self) -> Result<usize> {
+        Ok(self.state.lock().unwrap().runs.len())
+    }
+}

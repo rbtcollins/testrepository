@@ -13,10 +13,12 @@
 // license you chose for the specific language governing permissions and
 // limitations under that license.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
+use async_trait::async_trait;
 use eyre::eyre;
 use fs_at::OpenOptionsWriteMode;
+use futures::future::TryFutureExt;
 use tokio::io::{AsyncReadExt, AsyncWriteExt as _};
 use tracing::instrument;
 
@@ -30,9 +32,81 @@ pub static REPO_DIR: &str = ".testrepository";
 pub static FORMAT_FILE: &str = "format";
 pub static NEXT_STREAM_FILE: &str = "next-stream";
 
+/// Shared version helper functions.
+async fn count(root: &ArcFile) -> Result<usize> {
+    let mut stream_content = String::new();
+    let stream_content = OpenOptions::default()
+        .read(true)
+        .open_at(root, NEXT_STREAM_FILE)
+        .map_err(|r| r.into())
+        .and_then(|mut f| async move {
+            f.read_to_string(&mut stream_content)
+                .await
+                .eyre()
+                .map(|_len| stream_content)
+        })
+        .await?;
+    stream_content.trim().parse::<usize>().eyre()
+}
+
 /// File repository compatible with the python Testrepository
+#[derive(Debug)]
+struct TestRepositoryV1Repo {
+    root: ArcFile,
+}
+
+#[async_trait]
+impl Repository for TestRepositoryV1Repo {
+    async fn count(&self) -> Result<usize> {
+        count(&self.root).await
+    }
+}
+
+/// File repository that uses different storage...
+#[derive(Debug)]
+struct TestRepositoryV2Repo {
+    root: ArcFile,
+}
+#[async_trait]
+impl Repository for TestRepositoryV2Repo {
+    async fn count(&self) -> Result<usize> {
+        count(&self.root).await
+    }
+}
+
+/// File repository version layer (could be a type parameter or a dyn instead...)
+#[derive(Debug)]
+enum FileRepositoryVersion {
+    V1(TestRepositoryV1Repo),
+    V2(TestRepositoryV2Repo),
+}
+
+#[async_trait]
+impl Repository for FileRepositoryVersion {
+    async fn count(&self) -> Result<usize> {
+        match self {
+            FileRepositoryVersion::V1(repo) => repo.count().await,
+            FileRepositoryVersion::V2(repo) => repo.count().await,
+        }
+    }
+}
+
+impl PartialEq for FileRepositoryVersion {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (FileRepositoryVersion::V1(_), FileRepositoryVersion::V1(_)) => true,
+            (FileRepositoryVersion::V2(_), FileRepositoryVersion::V2(_)) => true,
+            _ => false,
+        }
+    }
+}
+
+/// Repositories opened on File URLs
 #[derive(Debug, PartialEq)]
-pub struct File {}
+pub struct File {
+    engine: FileRepositoryVersion,
+    path: PathBuf,
+}
 
 impl File {
     /// Create a new File repository instance reading from a repository located
@@ -45,8 +119,11 @@ impl File {
             .read(true)
             .open_dir_at(&base, REPO_DIR)
             .await?;
-        Self::validate_format(&root).await?;
-        Ok(Self {})
+        let engine = Self::validate_format(&root).await?;
+        Ok(Self {
+            engine,
+            path: path.to_owned(),
+        })
     }
 
     /// Initialize a python testr compatible repository at the given path
@@ -81,7 +158,11 @@ impl File {
             .await
             .eyre()?;
 
-        Ok(Self {})
+        let engine = Self::validate_format(&root).await?;
+        Ok(Self {
+            engine,
+            path: path.canonicalize().eyre()?,
+        })
     }
 
     /// Initialize a rust testr compatible repository at the given path
@@ -115,16 +196,20 @@ impl File {
             .await
             .eyre()?;
 
-        Ok(Self {})
+        let engine = Self::validate_format(&root).await?;
+        Ok(Self {
+            engine,
+            path: path.canonicalize().eyre()?,
+        })
     }
 
     /// Validate the format of a repository
     ///
     /// ## Arguments
     ///
-    /// * `root` - Open handle on the .testrepository directory.
+    /// * `root` - Open handle on the `.testrepository` directory.
     #[instrument(ret, err)]
-    async fn validate_format(root: &ArcFile) -> Result<()> {
+    async fn validate_format(root: &ArcFile) -> Result<FileRepositoryVersion> {
         let mut format = String::new();
         let opts = *OpenOptions::default().read(true);
         opts.open_at(root, FORMAT_FILE)
@@ -135,11 +220,22 @@ impl File {
         if format != "1\n" && format != "2\n" {
             Err(eyre!("Unknown repository format: {}", format))?
         }
-        opts.open_at(root, NEXT_STREAM_FILE).await.map(|_| ())
+        opts.open_at(root, NEXT_STREAM_FILE).await.map(|_d| {
+            if format == "1\n" {
+                FileRepositoryVersion::V1(TestRepositoryV1Repo { root: root.clone() })
+            } else {
+                FileRepositoryVersion::V2(TestRepositoryV2Repo { root: root.clone() })
+            }
+        })
     }
 }
 
-impl Repository for File {}
+#[async_trait]
+impl Repository for File {
+    async fn count(&self) -> Result<usize> {
+        self.engine.count().await
+    }
+}
 
 #[cfg(test)]
 mod tests {

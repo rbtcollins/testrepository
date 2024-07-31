@@ -13,5 +13,13 @@
 // license you chose for the specific language governing permissions and
 // limitations under that license.
 
+use async_trait::async_trait;
+
+use crate::error::Result;
+
 /// A repository containing test results.
-pub trait Repository {}
+#[async_trait]
+pub trait Repository {
+    /// Get the number of test runs this repository has stored.
+    async fn count(&self) -> Result<usize>;
+}

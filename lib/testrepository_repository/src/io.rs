@@ -66,7 +66,7 @@ fn _open_dir(p: &Path) -> io::Result<File> {
 
 /// Open a directory from a path. After this, use the fs_at OpenOptions to
 /// manipulate files and directories.
-pub async fn open_dir(p: &Path) -> Result<ArcFile> {
+pub(crate) async fn open_dir(p: &Path) -> Result<ArcFile> {
     task::spawn_blocking({
         let p = p.to_owned();
         move || _open_dir(&p)
@@ -82,7 +82,7 @@ pub async fn open_dir(p: &Path) -> Result<ArcFile> {
 /// testrepository does not need the enhanced capabilities that prevent Clone /
 /// Send / Sync.
 #[derive(Debug, Default, Clone, Copy)]
-pub struct OpenOptions {
+pub(crate) struct OpenOptions {
     read: bool,
     create: bool,
     create_new: bool,
@@ -95,10 +95,10 @@ impl OpenOptions {
         self
     }
 
-    pub fn create(&mut self, create: bool) -> &mut Self {
-        self.create = create;
-        self
-    }
+    // pub fn create(&mut self, create: bool) -> &mut Self {
+    //     self.create = create;
+    //     self
+    // }
 
     pub fn create_new(&mut self, create_new: bool) -> &mut Self {
         self.create_new = create_new;

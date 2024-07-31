@@ -12,6 +12,7 @@ version.workspace = true
 async-trait.workspace = true
 eyre.workspace = true
 fs_at.workspace = true
+futures.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true
@@ -19,6 +20,7 @@ url.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true
+test-case.workspace = true
 tokio-test.workspace = true
 tracing-test.workspace = true
 

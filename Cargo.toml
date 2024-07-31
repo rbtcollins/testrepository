@@ -14,8 +14,10 @@ version = "0.1.0"
 async-trait = "0.1.81"
 eyre = "0.6.5"
 fs_at = "0.2.1"
+futures = "0.3.30"
 libc = "0.2.147"
 tempfile = "3.10.1"
+test-case = "3.3.1"
 testrepository_repository = { path = "lib/testrepository_repository" }
 thiserror = "1.0.42"
 tokio = { version = "1.38.1", default-features = false, features = [

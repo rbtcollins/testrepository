@@ -15,24 +15,26 @@
 
 use std::path::Path;
 
+use async_trait::async_trait;
 use url::Url;
 
 use crate::{
     error::{Eyrify, Result},
     file::File,
     memory::{Memory, MemoryStore},
+    repository,
 };
 
 /// Open a repository with options
 #[derive(Debug, Default)]
-pub struct OpenOptions {
-    memory_store: MemoryStore,
+pub struct OpenOptions<'a> {
+    memory_store: Option<&'a MemoryStore>,
 }
 
-impl OpenOptions {
+impl<'a> OpenOptions<'a> {
     /// Attach a memory store to permit re-opening a MemoryRepository
-    pub fn with_memory_store(mut self, memory_store: MemoryStore) -> Self {
-        self.memory_store = memory_store;
+    pub fn with_memory_store(mut self, memory_store: &'a MemoryStore) -> Self {
+        self.memory_store = Some(memory_store);
         self
     }
 }
@@ -54,7 +56,7 @@ impl Repository {
     }
 
     /// Open a repository at the given location with given options
-    pub async fn open_with(location: &Url, options: OpenOptions) -> Result<Self> {
+    pub async fn open_with(location: &Url, options: OpenOptions<'_>) -> Result<Self> {
         match location.scheme() {
             "file" => {
                 let path = Path::new(&location.path()[1..]);
@@ -63,9 +65,22 @@ impl Repository {
             }
             "memory" => {
                 let relpath = location.host_str().unwrap_or_default();
-                Ok(Self::Memory(Memory::new(relpath, options.memory_store)?))
+                let memory_store = options.memory_store.ok_or_else(|| {
+                    eyre::eyre!("Memory store required to open a MemoryRepository")
+                })?;
+                Ok(Self::Memory(Memory::new(relpath, memory_store)?))
             }
             _ => Err(eyre::eyre!("Unknown scheme {}", location))?,
+        }
+    }
+}
+
+#[async_trait]
+impl repository::Repository for Repository {
+    async fn count(&self) -> Result<usize> {
+        match self {
+            Self::Memory(r) => r.count().await,
+            Self::File(r) => r.count().await,
         }
     }
 }
@@ -92,7 +107,7 @@ mod tests {
     async fn memory() {
         let mut store = MemoryStore::default();
         store.initialize("a");
-        let opts = OpenOptions::default().with_memory_store(store);
+        let opts = OpenOptions::default().with_memory_store(&store);
         let r = Repository::open_with(&Url::parse("memory://a").unwrap(), opts).await;
         assert_ok!(r);
     }
