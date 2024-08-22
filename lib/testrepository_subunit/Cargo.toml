@@ -1,0 +1,22 @@
+[package]
+authors.workspace = true
+description.workspace = true
+edition.workspace = true
+license.workspace = true
+name = "testrepository_subunit"
+publish.workspace = true
+version.workspace = true
+
+[dependencies]
+async-stream.workspace = true
+chrono.workspace = true
+futures.workspace = true
+subunit.workspace = true
+thiserror.workspace = true
+tokio-stream.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+tracing-test.workspace = true
+tracing.workspace = true
