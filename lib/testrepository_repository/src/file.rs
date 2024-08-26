@@ -38,7 +38,6 @@ async fn count(root: &ArcFile) -> Result<usize> {
     let stream_content = OpenOptions::default()
         .read(true)
         .open_at(root, NEXT_STREAM_FILE)
-        .map_err(|r| r.into())
         .and_then(|mut f| async move {
             f.read_to_string(&mut stream_content)
                 .await
@@ -93,6 +92,9 @@ impl Repository for FileRepositoryVersion {
 
 impl PartialEq for FileRepositoryVersion {
     fn eq(&self, other: &Self) -> bool {
+        // Yes its equivalent, but this is easier to read in this case. The enum values are not compared because they
+        // cannot implement PartialEq sensibly; `File` compares the repo paths.
+        #[allow(clippy::match_like_matches_macro)]
         match (self, other) {
             (FileRepositoryVersion::V1(_), FileRepositoryVersion::V1(_)) => true,
             (FileRepositoryVersion::V2(_), FileRepositoryVersion::V2(_)) => true,
@@ -300,7 +302,7 @@ mod tests {
         assert!(
             e.to_string().contains(".testrepository already exists"),
             "bad error {}",
-            e.to_string()
+            e
         );
     }
 }
